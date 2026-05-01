@@ -1,0 +1,2283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Grow a Seed! · W2 Review Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bubblegum+Sans&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   1. DESIGN TOKENS (defaults, overridden by THEME_CONFIG)
+   ============================================ */
+:root {
+  --bg: #1A120B;
+  --bg-elevated: #2D1F14;
+  --bg-card: #3A2A1C;
+  --bg-card-hover: #4A3525;
+  --text: #F5E6D3;
+  --text-secondary: #C4A882;
+  --text-faint: #7A6248;
+  --accent: #00E5A0;
+  --accent-dim: rgba(0,229,160,0.15);
+  --accent-glow: rgba(0,229,160,0.4);
+  --accent2: #5BC0EB;
+  --accent2-dim: rgba(91,192,235,0.15);
+  --accent2-glow: rgba(91,192,235,0.3);
+  --warm: #F5A623;
+  --warm-dim: rgba(245,166,35,0.15);
+  --correct: #00E5A0;
+  --correct-bg: rgba(0,229,160,0.12);
+  --wrong: #FF6B6B;
+  --wrong-bg: rgba(255,107,107,0.12);
+  --soil-surface: #5C4333;
+  --soil-mid: #3A2A1C;
+  --soil-deep: #1A120B;
+  --soil-abyss: #0D0906;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow: 0 4px 20px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
+  --radius: 20px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --font-display: 'Bubblegum Sans', cursive;
+  --font-ui: 'Quicksand', sans-serif;
+}
+
+*, *::before, *::after {
+  margin: 0; padding: 0; box-sizing: border-box;
+}
+
+html, body {
+  width: 100%; min-height: 100vh;
+  overflow-x: hidden;
+  font-family: var(--font-ui);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================
+   2. ATMOSPHERIC BACKGROUND (dark underground)
+   ============================================ */
+body {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(0,229,160,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(91,192,235,0.03) 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 60%, rgba(245,166,35,0.02) 0%, transparent 40%),
+    var(--bg);
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23F5E6D3' fill-opacity='0.015'%3E%3Ccircle cx='20' cy='20' r='1'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================
+   3. BIOLUMINESCENT PARTICLES
+   ============================================ */
+.particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+}
+
+@keyframes float-up {
+  0%   { transform: translateY(0) rotate(0deg) scale(0.6); opacity: 0; }
+  10%  { opacity: 0.5; }
+  50%  { transform: translateY(-45vh) translateX(20px) rotate(180deg) scale(1); }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(-105vh) translateX(-15px) rotate(360deg) scale(0.5); opacity: 0; }
+}
+
+@keyframes float-up-alt {
+  0%   { transform: translateY(0) rotate(0deg) scale(0.5); opacity: 0; }
+  10%  { opacity: 0.4; }
+  50%  { transform: translateY(-50vh) translateX(-25px) rotate(-180deg) scale(0.9); }
+  90%  { opacity: 0.2; }
+  100% { transform: translateY(-105vh) translateX(10px) rotate(-360deg) scale(0.4); opacity: 0; }
+}
+
+/* ============================================
+   4. PAGE SYSTEM
+   ============================================ */
+.page {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column; align-items: center;
+  overflow-y: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  transform: translateY(16px);
+  z-index: 10;
+  -webkit-overflow-scrolling: touch;
+}
+
+.page.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* ============================================
+   5. WELCOME PAGE — glowing seed in darkness
+   ============================================ */
+#welcome-page {
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.welcome-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 420px;
+  width: 100%;
+}
+
+.welcome-hero {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 24px;
+}
+
+/* Outer bioluminescent halo */
+.welcome-hero-halo {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-dim) 0%, rgba(0,229,160,0.05) 40%, transparent 70%);
+  animation: halo-breathe 3s ease-in-out infinite;
+}
+
+@keyframes halo-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+  50% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; }
+}
+
+/* Inner glow ring */
+.welcome-hero-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+  50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+}
+
+/* The seed itself */
+.welcome-hero-seed {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px; height: 40px;
+  background: radial-gradient(ellipse at 40% 35%, #C4A87A, #8B7355);
+  border-radius: 50%;
+  box-shadow:
+    inset -3px -3px 6px rgba(0,0,0,0.3),
+    inset 2px 2px 4px rgba(255,255,255,0.1),
+    0 0 20px var(--accent-glow),
+    0 0 40px rgba(0,229,160,0.15);
+  animation: hero-float 3s ease-in-out infinite;
+  z-index: 2;
+}
+
+.welcome-hero-seed::after {
+  content: '';
+  position: absolute;
+  top: 45%; left: 25%;
+  width: 50%; height: 2px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 2px;
+}
+
+@keyframes hero-float {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0) rotate(-3deg); }
+  50% { transform: translate(-50%, -50%) translateY(-10px) rotate(3deg); }
+}
+
+/* Tiny sprout emerging */
+.welcome-hero-sprout {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -100%);
+  width: 3px;
+  height: 0;
+  background: linear-gradient(to top, var(--accent), #00FFB3);
+  border-radius: 2px;
+  z-index: 3;
+  animation: sprout-hero 3s ease-in-out infinite;
+  transform-origin: bottom center;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+@keyframes sprout-hero {
+  0%, 100% { height: 0; }
+  40% { height: 22px; }
+  60% { height: 22px; }
+}
+
+.welcome-hero-leaf-l, .welcome-hero-leaf-r {
+  position: absolute;
+  width: 12px; height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  z-index: 3;
+  opacity: 0;
+  box-shadow: 0 0 6px var(--accent-glow);
+  animation: leaf-hero 3s ease-in-out infinite;
+}
+
+.welcome-hero-leaf-l {
+  top: 50%; left: 50%;
+  transform: translate(-8px, -108%) rotate(-30deg);
+  animation-delay: 0.5s;
+}
+
+.welcome-hero-leaf-r {
+  top: 50%; left: 50%;
+  transform: translate(-1px, -110%) rotate(25deg);
+  animation-delay: 0.6s;
+}
+
+@keyframes leaf-hero {
+  0%, 100% { opacity: 0; transform: scale(0); }
+  45% { opacity: 1; transform: scale(1) rotate(var(--rot, -30deg)); }
+  60% { opacity: 1; transform: scale(1) rotate(var(--rot, -30deg)); }
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 400;
+  color: var(--accent);
+  margin-bottom: 2px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 30px var(--accent-glow), 0 0 60px rgba(0,229,160,0.15);
+}
+
+.welcome-subtitle {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.welcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: var(--accent-dim);
+  border: 1.5px solid rgba(0,229,160,0.25);
+  border-radius: 24px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+  text-shadow: 0 0 10px rgba(0,229,160,0.2);
+}
+
+.welcome-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.9;
+  margin-bottom: 32px;
+}
+
+/* Difficulty selection */
+.diff-section { margin-bottom: 32px; }
+
+.diff-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.diff-options {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.diff-btn {
+  flex: 1;
+  max-width: 155px;
+  padding: 16px 14px;
+  background: var(--bg-card);
+  border: 2px solid rgba(245,230,211,0.08);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.diff-btn:hover { border-color: rgba(0,229,160,0.3); }
+.diff-btn.selected {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 4px 20px rgba(0,229,160,0.15), inset 0 0 20px rgba(0,229,160,0.05);
+}
+
+.diff-btn:active { transform: scale(0.96); }
+
+.diff-emoji { font-size: 24px; margin-bottom: 4px; }
+.diff-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.diff-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 52px;
+  background: linear-gradient(135deg, var(--accent), #00C98A);
+  color: #0D0906;
+  border: none;
+  border-radius: 60px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 28px rgba(0,229,160,0.3);
+  animation: btn-glow 2.5s ease-in-out infinite;
+}
+
+.start-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 3px 12px rgba(0,229,160,0.3);
+}
+
+@keyframes btn-glow {
+  0%, 100% { box-shadow: 0 6px 28px rgba(0,229,160,0.3); }
+  50% { box-shadow: 0 6px 40px rgba(0,229,160,0.5), 0 0 60px rgba(0,229,160,0.15); }
+}
+
+/* ============================================
+   6. QUIZ PAGE
+   ============================================ */
+#quiz-page { padding: 0; }
+
+.quiz-header {
+  position: sticky; top: 0;
+  width: 100%;
+  padding: 12px 16px 10px;
+  background: linear-gradient(180deg, var(--bg) 60%, transparent);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quiz-home-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(245,230,211,0.1);
+  background: rgba(26,18,11,0.85);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.quiz-home-btn:active { transform: scale(0.9); }
+
+.stage-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.stage-dot {
+  font-size: 17px;
+  opacity: 0.2;
+  transition: all 0.4s ease;
+  filter: grayscale(1) brightness(0.5);
+}
+.stage-dot.lit {
+  opacity: 1;
+  filter: grayscale(0) brightness(1);
+  animation: dot-pop 0.5s ease;
+  filter: drop-shadow(0 0 6px var(--accent-glow));
+}
+@keyframes dot-pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.quiz-progress-wrap {
+  flex: 1;
+  margin: 0 12px;
+}
+
+.quiz-progress-label {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.quiz-progress-bar {
+  width: 100%;
+  height: 7px;
+  background: rgba(245,230,211,0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.quiz-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 0%;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.quiz-body {
+  flex: 1;
+  width: 100%;
+  max-width: 520px;
+  padding: 8px 16px 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ============================================
+   7. GROWTH SCENE — underground cross-section
+   ============================================ */
+.growth-scene {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.3);
+  border: 1px solid rgba(245,230,211,0.05);
+}
+
+/* Twilight sky (pre-dawn) */
+.growth-sky {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 42%;
+  background: linear-gradient(180deg, #0D1B2A 0%, #1B2D45 40%, #2D4A5E 70%, #3A5A4C 100%);
+}
+
+/* Stars */
+.growth-sky::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 15% 20%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 35% 10%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 55% 30%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 75% 15%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 85% 35%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 25% 45%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 65% 8%, rgba(255,255,255,0.4), transparent);
+}
+
+/* Moonlight glow */
+.scene-moonlight {
+  position: absolute;
+  top: 8px; right: 30px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,220,255,0.3) 0%, rgba(200,220,255,0.05) 40%, transparent 70%);
+  opacity: 0.4;
+  transition: all 0.8s ease;
+}
+
+.scene-moonlight.active {
+  opacity: 1;
+  width: 48px; height: 48px;
+  background: radial-gradient(circle, rgba(255,245,200,0.5) 0%, rgba(255,213,79,0.15) 40%, transparent 70%);
+  box-shadow: 0 0 40px rgba(255,213,79,0.2);
+}
+
+/* Water drops (appear at stage 2) */
+.scene-rain {
+  position: absolute;
+  top: 6px; left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.scene-rain.active { opacity: 1; }
+
+.rain-drop {
+  width: 2px; height: 7px;
+  background: linear-gradient(to bottom, transparent, var(--accent2));
+  border-radius: 2px;
+  animation: rain-fall 1.2s ease-in infinite;
+  box-shadow: 0 0 4px var(--accent2-glow);
+}
+.rain-drop:nth-child(2) { animation-delay: 0.3s; left: 8px; }
+.rain-drop:nth-child(3) { animation-delay: 0.6s; left: 4px; }
+
+@keyframes rain-fall {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: 0.8; }
+  100% { transform: translateY(60px); opacity: 0; }
+}
+
+/* Soil surface — dark earth line */
+.soil-surface-line {
+  position: absolute;
+  top: 40%; left: 0; right: 0;
+  height: 4%;
+  background: linear-gradient(180deg, #4A3525 0%, #5C4333 100%);
+  z-index: 2;
+}
+
+/* Grass tufts (bioluminescent-touched) */
+.grass-row {
+  position: absolute;
+  top: 37%; left: 0; right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-around;
+  padding: 0 8%;
+}
+
+.tuft { display: flex; gap: 2px; }
+.blade {
+  width: 2px;
+  background: linear-gradient(to top, #2A5A3A, var(--accent));
+  border-radius: 2px 2px 0 0;
+  transform-origin: bottom center;
+  box-shadow: 0 0 3px rgba(0,229,160,0.2);
+}
+.blade:nth-child(1) { height: 7px; transform: rotate(-12deg); }
+.blade:nth-child(2) { height: 10px; transform: rotate(3deg); }
+.blade:nth-child(3) { height: 8px; transform: rotate(15deg); }
+
+/* Soil body — deep dark earth */
+.soil-body {
+  position: absolute;
+  top: 42%; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, #3A2A1C 0%, #2D1F14 20%, #1A120B 50%, #0D0906 100%);
+  z-index: 1;
+}
+
+/* Soil texture */
+.soil-body::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(0,0,0,0.15) 1px, transparent 1px);
+  background-size: 10px 10px;
+}
+
+/* Soil luminescent dots (like glowing roots) */
+.soil-body::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 60%, rgba(0,229,160,0.15), transparent),
+    radial-gradient(1px 1px at 70% 70%, rgba(91,192,235,0.1), transparent),
+    radial-gradient(1px 1px at 40% 85%, rgba(0,229,160,0.08), transparent),
+    radial-gradient(1px 1px at 85% 55%, rgba(91,192,235,0.12), transparent);
+}
+
+/* ---- STAGE 1: Seed on soil ---- */
+.s1-seed {
+  position: absolute;
+  top: 43%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  z-index: 4;
+  opacity: 0;
+}
+
+.s1-seed.visible {
+  opacity: 1;
+  animation: seed-land 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes seed-land {
+  0% { transform: translateX(-50%) translateY(-120%) scale(0.6) rotate(-15deg); opacity: 0; }
+  60% { transform: translateX(-50%) translateY(-96%) scale(1.05) rotate(3deg); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-100%) scale(1) rotate(0deg); opacity: 1; }
+}
+
+.s1-body {
+  width: 36px; height: 24px;
+  background: radial-gradient(ellipse at 35% 30%, #C4A87A, #8B7355 60%, #6B5540);
+  border-radius: 50%;
+  box-shadow:
+    inset -3px -3px 6px rgba(0,0,0,0.3),
+    inset 2px 2px 4px rgba(255,255,255,0.08),
+    0 0 15px rgba(0,229,160,0.2);
+  position: relative;
+}
+
+.s1-body::after {
+  content: '';
+  position: absolute;
+  top: 45%; left: 22%;
+  width: 56%; height: 2px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 2px;
+}
+
+/* ---- STAGE 2: Swollen seed ---- */
+.s2-seed {
+  position: absolute;
+  top: 43%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  z-index: 4;
+  opacity: 0;
+}
+
+.s2-seed.visible {
+  opacity: 1;
+  animation: swell-up 0.9s ease;
+}
+
+@keyframes swell-up {
+  0% { transform: translateX(-50%) translateY(-100%) scale(0.85); opacity: 0; }
+  50% { transform: translateX(-50%) translateY(-100%) scale(1.18); opacity: 1; }
+  75% { transform: translateX(-50%) translateY(-100%) scale(0.95); }
+  100% { transform: translateX(-50%) translateY(-100%) scale(1); }
+}
+
+.s2-body {
+  width: 46px; height: 30px;
+  background: radial-gradient(ellipse at 35% 30%, #D4C4A0, #B09874 50%, #907858);
+  border-radius: 50%;
+  box-shadow:
+    inset -3px -3px 8px rgba(0,0,0,0.2),
+    inset 3px 3px 6px rgba(255,255,255,0.1),
+    0 0 20px var(--accent2-glow);
+  position: relative;
+}
+
+.s2-body::after {
+  content: '';
+  position: absolute;
+  top: 45%; left: 20%;
+  width: 60%; height: 2px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 2px;
+}
+
+.s2-droplet {
+  position: absolute;
+  top: -6px; left: 50%;
+  transform: translateX(-50%);
+  width: 5px; height: 7px;
+  background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.8), var(--accent2));
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  opacity: 0;
+  box-shadow: 0 0 6px var(--accent2-glow);
+}
+
+.s2-seed.visible .s2-droplet {
+  animation: drip-tiny 2s ease-in-out infinite;
+}
+
+@keyframes drip-tiny {
+  0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.7; }
+  50% { transform: translateX(-50%) translateY(4px); opacity: 1; }
+}
+
+/* ---- STAGE 3: Cracked seed coat ---- */
+.s3-crack {
+  position: absolute;
+  top: 43%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  z-index: 4;
+  opacity: 0;
+  width: 48px; height: 32px;
+}
+
+.s3-crack.visible {
+  opacity: 1;
+  animation: crack-appear 0.6s ease;
+}
+
+@keyframes crack-appear {
+  0% { transform: translateX(-50%) translateY(-100%) scale(0.9); opacity: 0; }
+  100% { transform: translateX(-50%) translateY(-100%) scale(1); opacity: 1; }
+}
+
+.s3-half {
+  position: absolute;
+  top: 0;
+  width: 24px; height: 32px;
+  transition: transform 0.6s ease;
+}
+
+.s3-left {
+  left: 0;
+  background: radial-gradient(ellipse at 60% 40%, #C4A87A, #8B7355);
+  border-radius: 50% 8px 8px 50%;
+  transform-origin: right center;
+}
+
+.s3-right {
+  right: 0;
+  background: radial-gradient(ellipse at 40% 40%, #C4A87A, #8B7355);
+  border-radius: 8px 50% 50% 8px;
+  transform-origin: left center;
+}
+
+.s3-crack.visible .s3-left { animation: open-left 0.6s ease 0.2s both; }
+.s3-crack.visible .s3-right { animation: open-right 0.6s ease 0.2s both; }
+
+@keyframes open-left { to { transform: rotate(-18deg) translateX(-5px); } }
+@keyframes open-right { to { transform: rotate(18deg) translateX(5px); } }
+
+.s3-embryo {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 10px; height: 16px;
+  background: linear-gradient(180deg, var(--accent), #00C98A);
+  border-radius: 4px;
+  z-index: 5;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.s3-crack.visible .s3-embryo {
+  animation: embryo-peek 0.5s ease 0.5s both;
+}
+
+@keyframes embryo-peek {
+  to { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ---- STAGE 4: Root + Shoot ---- */
+.s4-growth {
+  position: absolute;
+  top: 43%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  opacity: 0;
+}
+
+.s4-growth.visible { opacity: 1; }
+
+.s4-shoot {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 0;
+  background: linear-gradient(to top, var(--accent), #00FFB3);
+  border-radius: 3px 3px 0 0;
+  transform-origin: bottom center;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.s4-growth.visible .s4-shoot {
+  animation: grow-up 0.9s ease forwards;
+}
+
+@keyframes grow-up {
+  0% { height: 0; }
+  65% { height: 60px; }
+  100% { height: 56px; }
+}
+
+.s4-root {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 0;
+  background: linear-gradient(to bottom, #A0845C, #7A6248);
+  border-radius: 0 0 2px 2px;
+  transform-origin: top center;
+}
+
+.s4-growth.visible .s4-root {
+  animation: grow-down 0.9s ease 0.15s forwards;
+}
+
+@keyframes grow-down {
+  0% { height: 0; }
+  65% { height: 48px; }
+  100% { height: 44px; }
+}
+
+.s4-branch {
+  position: absolute;
+  width: 10px; height: 2px;
+  background: #7A6248;
+  border-radius: 1px;
+  transform-origin: left center;
+  opacity: 0;
+}
+
+.s4-branch-l { top: 42px; left: calc(50% - 6px); transform: rotate(-30deg); }
+.s4-branch-r { top: 38px; right: calc(50% - 6px); transform: rotate(30deg); }
+
+.s4-growth.visible .s4-branch-l { animation: branch-out 0.3s ease 0.7s both; }
+.s4-growth.visible .s4-branch-r { animation: branch-out 0.3s ease 0.8s both; }
+
+@keyframes branch-out {
+  from { opacity: 0; transform: scaleX(0); }
+  to { opacity: 1; }
+}
+
+/* ---- STAGE 5: Seedling ---- */
+.s5-seedling {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  opacity: 0;
+}
+
+.s5-seedling.visible {
+  opacity: 1;
+  animation: seedling-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes seedling-pop {
+  0% { transform: translateX(-50%) translateY(16px) scale(0.5); opacity: 0; }
+  100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+}
+
+.s5-leaves {
+  position: relative;
+  width: 70px; height: 30px;
+  margin: 0 auto;
+}
+
+.s5-leaf {
+  position: absolute;
+  border-radius: 50%;
+  box-shadow: inset -1px -1px 3px rgba(0,0,0,0.1), 0 0 10px var(--accent-glow);
+}
+
+.s5-leaf-l {
+  left: 4px; top: 6px;
+  width: 26px; height: 16px;
+  background: linear-gradient(135deg, var(--accent), #00C98A);
+  transform: rotate(-22deg);
+}
+
+.s5-leaf-r {
+  right: 4px; top: 4px;
+  width: 28px; height: 18px;
+  background: linear-gradient(-135deg, #00FFB3, var(--accent));
+  transform: rotate(22deg);
+}
+
+.s5-stem {
+  width: 4px; height: 65px;
+  background: linear-gradient(to top, var(--accent), #00FFB3);
+  border-radius: 3px;
+  margin: 0 auto;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* ---- STAGE 6: Full plant ---- */
+.s6-plant {
+  position: absolute;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  opacity: 0;
+}
+
+.s6-plant.visible {
+  opacity: 1;
+  animation: plant-bloom 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes plant-bloom {
+  0% { transform: translateX(-50%) scale(0.4); opacity: 0; }
+  60% { transform: translateX(-50%) scale(1.05); }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.s6-flower {
+  position: relative;
+  width: 36px; height: 36px;
+  margin: 0 auto 2px;
+}
+
+.s6-petal {
+  position: absolute;
+  width: 14px; height: 18px;
+  border-radius: 50%;
+  transform-origin: bottom center;
+}
+
+.s6-petal:nth-child(1) { left: 11px; top: 0; transform: rotate(0deg); background: rgba(245,166,35,0.8); box-shadow: 0 0 6px rgba(245,166,35,0.3); }
+.s6-petal:nth-child(2) { left: 19px; top: 2px; transform: rotate(60deg); background: rgba(255,183,77,0.8); box-shadow: 0 0 6px rgba(255,183,77,0.3); }
+.s6-petal:nth-child(3) { left: 18px; top: 12px; transform: rotate(120deg); background: rgba(245,166,35,0.7); box-shadow: 0 0 6px rgba(245,166,35,0.3); }
+.s6-petal:nth-child(4) { left: 4px; top: 12px; transform: rotate(240deg); background: rgba(255,183,77,0.8); box-shadow: 0 0 6px rgba(255,183,77,0.3); }
+.s6-petal:nth-child(5) { left: 3px; top: 2px; transform: rotate(300deg); background: rgba(245,166,35,0.7); box-shadow: 0 0 6px rgba(245,166,35,0.3); }
+
+.s6-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px; height: 12px;
+  background: radial-gradient(circle, #FFF9C4, var(--warm));
+  border-radius: 50%;
+  z-index: 1;
+  box-shadow: 0 0 12px rgba(245,166,35,0.4);
+}
+
+.s6-foliage {
+  position: relative;
+  width: 100px; height: 50px;
+  margin: 0 auto;
+}
+
+.s6-leaf {
+  position: absolute;
+  border-radius: 50%;
+  box-shadow: inset -1px -1px 3px rgba(0,0,0,0.1), 0 0 8px var(--accent-glow);
+}
+
+.s6-l1 { left: 6px; top: 12px; width: 38px; height: 18px; background: linear-gradient(135deg, var(--accent), #00C98A); transform: rotate(-28deg); }
+.s6-l2 { right: 6px; top: 8px; width: 40px; height: 20px; background: linear-gradient(-135deg, #00FFB3, var(--accent)); transform: rotate(22deg); }
+.s6-l3 { left: 12px; top: 28px; width: 32px; height: 15px; background: linear-gradient(135deg, #00C98A, #009E6E); transform: rotate(-40deg); }
+
+.s6-trunk {
+  width: 5px; height: 100px;
+  background: linear-gradient(to top, #1A5A3A, var(--accent));
+  border-radius: 3px;
+  margin: 0 auto;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* Sparkles — bioluminescent style */
+.sparkle {
+  position: absolute;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 10;
+  animation: sparkle-fly 1.5s ease-out forwards;
+}
+
+@keyframes sparkle-fly {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-50px) scale(0.2); }
+}
+
+/* ============================================
+   8. QUESTION CARD (dark theme)
+   ============================================ */
+.question-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(245,230,211,0.06);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  animation: card-in 0.4s ease both;
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.question-image {
+  width: 120px; height: 120px;
+  margin: 0 auto 12px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid rgba(0,229,160,0.15);
+  background: var(--bg-elevated);
+}
+
+.question-image img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 8px;
+}
+
+.speaker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--accent-dim);
+  border: 1.5px solid rgba(0,229,160,0.25);
+  border-radius: 24px;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-bottom: 8px;
+}
+
+.speaker-btn:active { transform: scale(0.96); }
+
+.speaker-btn.playing {
+  animation: speaker-glow 1s ease-in-out infinite;
+}
+
+@keyframes speaker-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,160,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(0,229,160,0); }
+}
+
+.question-text {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text);
+  font-weight: 600;
+  text-align: center;
+  font-family: var(--font-ui);
+}
+
+/* ============================================
+   9. OPTIONS (dark theme)
+   ============================================ */
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.options-list.image-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.options-list.image-options.four-cols {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.option-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 2px solid rgba(245,230,211,0.06);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+  animation: opt-in 0.35s ease both;
+  box-shadow: var(--shadow-sm);
+}
+
+.option-btn:nth-child(1) { animation-delay: 0.05s; }
+.option-btn:nth-child(2) { animation-delay: 0.1s; }
+.option-btn:nth-child(3) { animation-delay: 0.15s; }
+.option-btn:nth-child(4) { animation-delay: 0.2s; }
+
+@keyframes opt-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.option-btn.image-option {
+  flex-direction: column;
+  padding: 12px 8px;
+  text-align: center;
+  gap: 6px;
+}
+
+.option-btn.image-option .option-image {
+  width: 76px; height: 76px;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1.5px solid rgba(245,230,211,0.06);
+  margin: 0 auto;
+}
+
+.option-btn.image-option .option-image img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.option-btn.image-option .option-label-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.option-btn:active:not(.disabled) { transform: scale(0.97); }
+
+.opt-label {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(245,230,211,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  transition: all 0.25s ease;
+  font-family: var(--font-display);
+}
+
+.opt-text { flex: 1; line-height: 1.5; }
+
+/* States */
+.option-btn.correct {
+  border-color: var(--correct);
+  background: var(--correct-bg);
+  animation: correct-pop 0.5s ease;
+  box-shadow: 0 0 20px rgba(0,229,160,0.15);
+}
+.option-btn.correct .opt-label { background: var(--correct); border-color: var(--correct); color: #0D0906; }
+.option-btn.correct.image-option .option-image { border-color: var(--correct); }
+
+@keyframes correct-pop {
+  0% { box-shadow: 0 0 0 0 rgba(0,229,160,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(0,229,160,0); }
+  100% { box-shadow: 0 0 20px rgba(0,229,160,0.15); }
+}
+
+.option-btn.wrong {
+  border-color: var(--wrong);
+  background: var(--wrong-bg);
+  animation: shake 0.4s ease;
+}
+.option-btn.wrong .opt-label { background: var(--wrong); border-color: var(--wrong); color: #fff; }
+.option-btn.wrong.image-option .option-image { border-color: var(--wrong); }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.option-btn.disabled { pointer-events: none; opacity: 0.4; }
+.option-btn.correct.disabled, .option-btn.wrong.disabled { opacity: 1; }
+
+/* ============================================
+   10. FEEDBACK (dark theme)
+   ============================================ */
+.feedback {
+  padding: 16px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  line-height: 1.6;
+  animation: fb-in 0.3s ease both;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+@keyframes fb-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.feedback.correct-fb {
+  background: var(--correct-bg);
+  border-left: 4px solid var(--correct);
+  color: var(--accent);
+}
+
+.feedback.wrong-fb {
+  background: var(--wrong-bg);
+  border-left: 4px solid var(--wrong);
+  color: var(--wrong);
+}
+
+.fb-icon { font-size: 24px; flex-shrink: 0; }
+
+.next-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 6px 0;
+  animation: fb-in 0.3s ease 0.3s both;
+  font-weight: 600;
+}
+
+/* ============================================
+   11. RESULT PAGE (dark theme)
+   ============================================ */
+#result-page {
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.result-content {
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.result-icon {
+  font-size: 88px;
+  margin-bottom: 12px;
+  animation: result-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes result-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.result-score {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  animation: result-pop 0.7s ease 0.1s both;
+}
+
+.result-title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  color: var(--accent);
+  margin-bottom: 10px;
+  animation: result-pop 0.7s ease 0.2s both;
+  text-shadow: 0 0 20px var(--accent-glow);
+}
+
+.result-msg {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  margin-bottom: 32px;
+  animation: result-pop 0.7s ease 0.3s both;
+}
+
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: result-pop 0.7s ease 0.4s both;
+}
+
+.result-btn-primary {
+  padding: 16px;
+  background: linear-gradient(135deg, var(--accent), #00C98A);
+  color: #0D0906;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px rgba(0,229,160,0.25);
+}
+.result-btn-primary:active { transform: scale(0.97); }
+
+.result-btn-secondary {
+  padding: 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid rgba(245,230,211,0.1);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.result-btn-secondary:active { transform: scale(0.97); }
+
+/* Confetti */
+.confetti-piece {
+  position: fixed;
+  font-size: 28px;
+  pointer-events: none;
+  z-index: 100;
+  animation: confetti-drop 3s ease-out forwards;
+}
+
+@keyframes confetti-drop {
+  0% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: translateY(600px) rotate(720deg) scale(0.2); }
+}
+
+/* ============================================
+   12. RESPONSIVE
+   ============================================ */
+@media (max-height: 700px) {
+  .growth-scene { height: 180px; }
+  .welcome-title { font-size: 36px; }
+  .s6-trunk { height: 70px; }
+}
+
+@media (max-height: 600px) {
+  .growth-scene { height: 150px; }
+  .quiz-body { padding: 4px 16px 80px; gap: 10px; }
+  .s5-stem { height: 45px; }
+  .s6-trunk { height: 60px; }
+}
+
+@media (min-width: 481px) {
+  .quiz-body { padding-left: 24px; padding-right: 24px; }
+  .growth-scene { height: 300px; }
+  .s5-stem { height: 85px; }
+  .s6-trunk { height: 130px; }
+}
+
+@media (max-height: 500px) {
+  .growth-scene { height: 130px !important; }
+  .s5-stem { height: 35px !important; }
+  .s6-trunk { height: 50px !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- Bioluminescent particles -->
+<div class="particle" style="left:8%; width:8px; height:8px; background:var(--accent); border-radius:50%; box-shadow: 0 0 6px var(--accent-glow); animation: float-up 15s linear infinite; animation-delay:0s;"></div>
+<div class="particle" style="left:25%; width:6px; height:6px; background:var(--accent2); border-radius:50%; box-shadow: 0 0 6px var(--accent2-glow); animation: float-up-alt 18s linear infinite; animation-delay:3s;"></div>
+<div class="particle" style="left:45%; width:10px; height:10px; background:var(--accent); border-radius:50%; box-shadow: 0 0 8px var(--accent-glow); animation: float-up 13s linear infinite; animation-delay:5s; opacity:0.3;"></div>
+<div class="particle" style="left:62%; width:5px; height:5px; background:var(--accent2); border-radius:50%; box-shadow: 0 0 4px var(--accent2-glow); animation: float-up-alt 16s linear infinite; animation-delay:1s;"></div>
+<div class="particle" style="left:78%; width:7px; height:7px; background:var(--accent); border-radius:50%; box-shadow: 0 0 6px var(--accent-glow); animation: float-up 19s linear infinite; animation-delay:4s;"></div>
+<div class="particle" style="left:92%; width:6px; height:6px; background:var(--accent2); border-radius:50%; box-shadow: 0 0 5px var(--accent2-glow); animation: float-up-alt 14s linear infinite; animation-delay:6s;"></div>
+
+<!-- ============================================
+     PAGE 1: WELCOME
+     ============================================ -->
+<div id="welcome-page" class="page active">
+  <div class="welcome-content">
+    <div class="welcome-hero">
+      <div class="welcome-hero-halo"></div>
+      <div class="welcome-hero-glow"></div>
+      <div class="welcome-hero-seed"></div>
+      <div class="welcome-hero-sprout"></div>
+      <div class="welcome-hero-leaf-l"></div>
+      <div class="welcome-hero-leaf-r"></div>
+    </div>
+    <h1 class="welcome-title">Grow a Seed!</h1>
+    <p class="welcome-subtitle">Answer questions to grow your seed into a plant</p>
+    <div class="welcome-badge">WEEK 2 · SEEDS & GERMINATION</div>
+    <p class="welcome-desc">
+      Each correct answer helps your seed grow one stage.<br>
+      Get all 6 right to grow a beautiful flowering plant!
+    </p>
+
+    <div class="diff-section">
+      <div class="diff-label">Choose Level</div>
+      <div class="diff-options">
+        <div class="diff-btn selected" data-level="easy" onclick="selectDifficulty('easy')">
+          <div class="diff-emoji">⭐</div>
+          <div class="diff-name">Easy</div>
+          <div class="diff-desc">3 choices · Pictures</div>
+        </div>
+        <div class="diff-btn" data-level="hard" onclick="selectDifficulty('hard')">
+          <div class="diff-emoji">⭐⭐</div>
+          <div class="diff-name">Hard</div>
+          <div class="diff-desc">4 choices · Words</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="start-btn" onclick="startGame()">PLAY</button>
+  </div>
+</div>
+
+<!-- ============================================
+     PAGE 2: QUIZ
+     ============================================ -->
+<div id="quiz-page" class="page">
+  <div class="quiz-header">
+    <button class="quiz-home-btn" onclick="goHome()" title="Home">🏠</button>
+    <div class="stage-indicator" id="stage-indicator">
+      <span class="stage-dot" data-stage="1">🫘</span>
+      <span class="stage-dot" data-stage="2">💧</span>
+      <span class="stage-dot" data-stage="3">🫧</span>
+      <span class="stage-dot" data-stage="4">🌱</span>
+      <span class="stage-dot" data-stage="5">🌿</span>
+      <span class="stage-dot" data-stage="6">🌸</span>
+    </div>
+    <div class="quiz-progress-wrap">
+      <div class="quiz-progress-label" id="progress-label">Question 1 / 6</div>
+      <div class="quiz-progress-bar">
+        <div class="quiz-progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-body" id="quiz-body">
+    <div class="growth-scene" id="growth-scene">
+      <!-- Twilight sky -->
+      <div class="growth-sky"></div>
+      <div class="scene-moonlight" id="scene-sun"></div>
+      <div class="scene-rain" id="scene-rain">
+        <div class="rain-drop"></div>
+        <div class="rain-drop"></div>
+        <div class="rain-drop"></div>
+      </div>
+
+      <!-- Surface -->
+      <div class="grass-row">
+        <div class="tuft"><div class="blade"></div><div class="blade"></div><div class="blade"></div></div>
+        <div class="tuft"><div class="blade"></div><div class="blade"></div></div>
+        <div class="tuft"><div class="blade"></div><div class="blade"></div><div class="blade"></div></div>
+        <div class="tuft"><div class="blade"></div><div class="blade"></div></div>
+        <div class="tuft"><div class="blade"></div><div class="blade"></div><div class="blade"></div></div>
+      </div>
+      <div class="soil-surface-line"></div>
+      <div class="soil-body"></div>
+
+      <!-- Stage 1: Seed -->
+      <div class="s1-seed" id="s1"><div class="s1-body"></div></div>
+      <!-- Stage 2: Swollen -->
+      <div class="s2-seed" id="s2"><div class="s2-body"></div><div class="s2-droplet"></div></div>
+      <!-- Stage 3: Cracked -->
+      <div class="s3-crack" id="s3">
+        <div class="s3-half s3-left"></div>
+        <div class="s3-half s3-right"></div>
+        <div class="s3-embryo"></div>
+      </div>
+      <!-- Stage 4: Root+Shoot -->
+      <div class="s4-growth" id="s4">
+        <div class="s4-shoot"></div>
+        <div class="s4-root"></div>
+        <div class="s4-branch s4-branch-l"></div>
+        <div class="s4-branch s4-branch-r"></div>
+      </div>
+      <!-- Stage 5: Seedling -->
+      <div class="s5-seedling" id="s5">
+        <div class="s5-leaves"><div class="s5-leaf s5-leaf-l"></div><div class="s5-leaf s5-leaf-r"></div></div>
+        <div class="s5-stem"></div>
+      </div>
+      <!-- Stage 6: Full plant -->
+      <div class="s6-plant" id="s6">
+        <div class="s6-flower">
+          <div class="s6-petal"></div><div class="s6-petal"></div><div class="s6-petal"></div>
+          <div class="s6-petal"></div><div class="s6-petal"></div>
+          <div class="s6-center"></div>
+        </div>
+        <div class="s6-foliage">
+          <div class="s6-leaf s6-l1"></div>
+          <div class="s6-leaf s6-l2"></div>
+          <div class="s6-leaf s6-l3"></div>
+        </div>
+        <div class="s6-trunk"></div>
+      </div>
+    </div>
+
+    <div id="question-container"></div>
+  </div>
+</div>
+
+<!-- ============================================
+     PAGE 3: RESULT
+     ============================================ -->
+<div id="result-page" class="page">
+  <div class="result-content">
+    <div class="result-icon" id="result-icon"></div>
+    <div class="result-score" id="result-score"></div>
+    <div class="result-title" id="result-title"></div>
+    <div class="result-msg" id="result-msg"></div>
+    <div class="result-actions">
+      <button class="result-btn-primary" onclick="goHome()">Choose Level</button>
+      <button class="result-btn-secondary" onclick="startGame()">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================
+   THEME CONFIG SYSTEM
+   Override :root CSS variables per-week
+   ============================================ */
+const THEME_CONFIG = {
+  id: 'w2-seeds',
+  name: 'Underground Mystery',
+  // These map to CSS custom properties on :root
+  colors: {
+    '--bg':           '#1A120B',
+    '--bg-elevated':  '#2D1F14',
+    '--bg-card':      '#3A2A1C',
+    '--bg-card-hover':'#4A3525',
+    '--text':         '#F5E6D3',
+    '--text-secondary':'#C4A882',
+    '--text-faint':   '#7A6248',
+    '--accent':       '#00E5A0',
+    '--accent-dim':   'rgba(0,229,160,0.15)',
+    '--accent-glow':  'rgba(0,229,160,0.4)',
+    '--accent2':      '#5BC0EB',
+    '--accent2-dim':  'rgba(91,192,235,0.15)',
+    '--accent2-glow': 'rgba(91,192,235,0.3)',
+    '--warm':         '#F5A623',
+    '--warm-dim':     'rgba(245,166,35,0.15)',
+    '--correct':      '#00E5A0',
+    '--correct-bg':   'rgba(0,229,160,0.12)',
+    '--wrong':        '#FF6B6B',
+    '--wrong-bg':     'rgba(255,107,107,0.12)',
+    '--soil-surface': '#5C4333',
+    '--soil-mid':     '#3A2A1C',
+    '--soil-deep':    '#1A120B',
+    '--soil-abyss':   '#0D0906',
+  },
+  fonts: {
+    '--font-display': "'Bubblegum Sans', cursive",
+    '--font-ui':      "'Quicksand', sans-serif",
+  },
+  growthStages: ['🫘', '💧', '🫧', '🌱', '🌿', '🌸'],
+};
+
+function applyTheme(config) {
+  const root = document.documentElement;
+  Object.entries(config.colors || {}).forEach(([prop, val]) => root.style.setProperty(prop, val));
+  Object.entries(config.fonts || {}).forEach(([prop, val]) => root.style.setProperty(prop, val));
+}
+
+// Apply theme on load
+applyTheme(THEME_CONFIG);
+
+/* ============================================
+   IMAGE MAP (reuse W2 vocab card images)
+   ============================================ */
+const IMG = {
+  sprout: 'vocab_images/SPROUT.png',
+  'seed coat': 'vocab_images/seed coat.png',
+  embryo: 'vocab_images/embryo.png',
+  cotyledon: 'vocab_images/COTYLEDON.png',
+  dormancy: 'vocab_images/dormancy.png',
+  seedling: 'vocab_images/SEEDLING.png',
+  shoot: 'vocab_images/shoot.png',
+  germination: 'vocab_images/germination.png',
+  photosynthesis: 'vocab_images/photosynthesis.png',
+  swell: 'vocab_images/swell.png',
+  oxygen: 'vocab_images/OXYGEN.png',
+  'solar-powered': 'vocab_images/solar-powered.png'
+};
+
+/* ============================================
+   QUESTION BANK (unchanged — same questions/audio)
+   ============================================ */
+const QUESTIONS = {
+  easy: [
+    {
+      id: 'e1', type: 'listen-image',
+      tts: "Look at these pictures! Which one shows a sprout? That's a tiny green baby plant just poking out of the soil!",
+      options: [
+        { id: 'sprout', image: 'sprout' },
+        { id: 'dormancy', image: 'dormancy' },
+        { id: 'embryo', image: 'embryo' }
+      ],
+      correct: 'sprout',
+      growText: "Great job! You found the sprout!"
+    },
+    {
+      id: 'e2', type: 'listen-image',
+      tts: "This one protects the baby plant inside, like a tiny raincoat! Which picture is it?",
+      options: [
+        { id: 'seed coat', image: 'seed coat' },
+        { id: 'seedling', image: 'seedling' },
+        { id: 'oxygen', image: 'oxygen' }
+      ],
+      correct: 'seed coat',
+      growText: "Yes! The seed coat is like a raincoat!"
+    },
+    {
+      id: 'e3', type: 'listen-image',
+      tts: "Shhh... this one is sleeping inside the seed. A tiny baby plant, curled up and waiting. Which picture shows it?",
+      options: [
+        { id: 'embryo', image: 'embryo' },
+        { id: 'cotyledon', image: 'cotyledon' },
+        { id: 'dormancy', image: 'dormancy' }
+      ],
+      correct: 'embryo',
+      growText: "That's right! The embryo is a sleeping baby plant!"
+    },
+    {
+      id: 'e4', type: 'listen-image',
+      tts: "This one is like a packed lunchbox, full of yummy food for the baby plant! Which picture shows it?",
+      options: [
+        { id: 'cotyledon', image: 'cotyledon' },
+        { id: 'seed coat', image: 'seed coat' },
+        { id: 'shoot', image: 'shoot' }
+      ],
+      correct: 'cotyledon',
+      growText: "Correct! The cotyledon is a lunchbox!"
+    },
+    {
+      id: 'e5', type: 'listen-image',
+      tts: "Whoa! This seed is drinking water and getting BIGGER and ROUNDER, like a balloon! Which picture shows it?",
+      options: [
+        { id: 'swell', image: 'swell' },
+        { id: 'germination', image: 'germination' },
+        { id: 'dormancy', image: 'dormancy' }
+      ],
+      correct: 'swell',
+      growText: "Yes! The seed is swelling like a balloon!"
+    },
+    {
+      id: 'e6', type: 'listen-image',
+      tts: "These seeds are taking a really, really long nap through the cold winter. Zzz... Which picture shows it?",
+      options: [
+        { id: 'dormancy', image: 'dormancy' },
+        { id: 'embryo', image: 'embryo' },
+        { id: 'seed coat', image: 'seed coat' }
+      ],
+      correct: 'dormancy',
+      growText: "That's right! Dormancy is a long winter nap!"
+    },
+    {
+      id: 'e7', type: 'listen-image',
+      tts: "Ring ring ring! The alarm clock inside the seed goes off! The baby plant wakes up and starts to grow! Which picture shows this?",
+      options: [
+        { id: 'germination', image: 'germination' },
+        { id: 'swell', image: 'swell' },
+        { id: 'seedling', image: 'seedling' }
+      ],
+      correct: 'germination',
+      growText: "Yes! Germination is when the alarm goes off!"
+    },
+    {
+      id: 'e8', type: 'listen-image',
+      tts: "This one is like a tiny green arm pushing UP through the soil, reaching for the sky! Which picture shows it?",
+      options: [
+        { id: 'shoot', image: 'shoot' },
+        { id: 'embryo', image: 'embryo' },
+        { id: 'oxygen', image: 'oxygen' }
+      ],
+      correct: 'shoot',
+      growText: "Great! The shoot reaches for the sky!"
+    },
+    {
+      id: 'e9', type: 'listen-image',
+      tts: "Ta-da! This little baby plant just popped out of the soil! It's brand new! Which picture shows it?",
+      options: [
+        { id: 'seedling', image: 'seedling' },
+        { id: 'seed coat', image: 'seed coat' },
+        { id: 'dormancy', image: 'dormancy' }
+      ],
+      correct: 'seedling',
+      growText: "Correct! A seedling just came out!"
+    },
+    {
+      id: 'e10', type: 'listen-word',
+      tts: "A seed needs three things to wake up. It needs water... it needs warmth... and it needs one more thing. Can you guess?",
+      options: ['Oxygen', 'Sugar', 'Toys'],
+      correct: 'Oxygen',
+      growText: "Yes! Seeds need oxygen to breathe!"
+    },
+    {
+      id: 'e11', type: 'listen-word',
+      tts: "Leaves are like tiny kitchens! They cook food using nothing but sunlight! What's this big word called?",
+      options: ['Photosynthesis', 'Dormancy', 'Germination'],
+      correct: 'Photosynthesis',
+      growText: "Wow! You know photosynthesis!"
+    },
+    {
+      id: 'e12', type: 'listen-word',
+      tts: "Some things need batteries to work. But leaves only need sunshine! They run on solar power! What do we call that?",
+      options: ['Solar-powered', 'Water-powered', 'Wind-powered'],
+      correct: 'Solar-powered',
+      growText: "That's right! Solar-powered!"
+    }
+  ],
+
+  hard: [
+    {
+      id: 'h1', type: 'listen-word',
+      tts: "A tiny seed lands in warm, wet soil. It's time to grow! But what happens FIRST? The seed coat cracks open, the root grows down, or the flower blooms?",
+      options: [
+        'The seed coat cracks open',
+        'The root grows down',
+        'The flower blooms'
+      ],
+      correct: 'The seed coat cracks open',
+      growText: "Yes! The seed coat cracks open first!"
+    },
+    {
+      id: 'h2', type: 'listen-word',
+      tts: "Seeds need water, warmth, and oxygen to wake up. But one of these four things, seeds do NOT need to germinate. Which one?",
+      options: [
+        'Sunlight',
+        'Water',
+        'Warmth',
+        'Oxygen'
+      ],
+      correct: 'Sunlight',
+      growText: "That's right! Seeds don't need sunlight underground!"
+    },
+    {
+      id: 'h3', type: 'listen-word',
+      tts: "A cotyledon is like a lunchbox full of food for the baby plant. But once the real leaves start cooking with sunlight, what happens to the cotyledon?",
+      options: [
+        'It falls off',
+        'It turns into a flower',
+        'It grows into a root',
+        'It makes more food'
+      ],
+      correct: 'It falls off',
+      growText: "Correct! The cotyledon falls off!"
+    },
+    {
+      id: 'h4', type: 'listen-word',
+      tts: "A little seedling is growing in a dark box. There's only one small hole letting light in. Which way will the shoot bend?",
+      options: [
+        'Toward the light',
+        'Away from the light',
+        "It won't bend",
+        'It will stop growing'
+      ],
+      correct: 'Toward the light',
+      growText: "Amazing! Plants always reach for the light!"
+    },
+    {
+      id: 'h5', type: 'listen-word',
+      tts: "The root grows DOWN to find water. But which part grows UP to find sunlight?",
+      options: [
+        'A shoot',
+        'A root',
+        'A leaf',
+        'A flower'
+      ],
+      correct: 'A shoot',
+      growText: "Right! The shoot pushes up!"
+    },
+    {
+      id: 'h6', type: 'listen-word',
+      tts: "An embryo is a baby plant sleeping inside a seed. But once it pops out of the soil and opens its leaves, what do we call it now?",
+      options: [
+        'A seedling',
+        'An embryo',
+        'A cotyledon',
+        'A seed coat'
+      ],
+      correct: 'A seedling',
+      growText: "Yes! Once it pops out, it's a seedling!"
+    },
+    {
+      id: 'h7', type: 'listen-word',
+      tts: "Quick quiz! A seed needs three things to wake up. Name all three!",
+      options: [
+        'Water, warmth, and oxygen',
+        'Sunlight, soil, and wind',
+        'Sugar, milk, and honey',
+        'Leaves, flowers, and fruit'
+      ],
+      correct: 'Water, warmth, and oxygen',
+      growText: "Yes! Water, warmth, and oxygen!"
+    },
+    {
+      id: 'h8', type: 'listen-word',
+      tts: "Leaves cook food using sunlight during the day. But at night, when there's no sun, plants actually breathe IN something, just like you! What do they breathe in?",
+      options: [
+        'Oxygen',
+        'Water',
+        'Sunlight',
+        'Food'
+      ],
+      correct: 'Oxygen',
+      growText: "Yes! Plants breathe in oxygen at night, just like us!"
+    },
+    {
+      id: 'h9', type: 'listen-word',
+      tts: "Some seed coats are so tough that they need extreme heat to crack open! In Australia, some seeds only grow after what big event?",
+      options: [
+        'A bushfire',
+        'A flood',
+        'A snowstorm',
+        'An earthquake'
+      ],
+      correct: 'A bushfire',
+      growText: "Wow! Some seeds need fire to open!"
+    },
+    {
+      id: 'h10', type: 'listen-word',
+      tts: "A seed coat is like a raincoat. A cotyledon is like a lunchbox. And an embryo is like... what?",
+      options: [
+        'A sleeping baby',
+        'A tiny kitchen',
+        'A warm blanket',
+        'A water bottle'
+      ],
+      correct: 'A sleeping baby',
+      growText: "Yes! The embryo is a sleeping baby!"
+    },
+    {
+      id: 'h11', type: 'listen-word',
+      tts: "Imagine a seed has water and oxygen, but it's freezing cold outside. Will it germinate?",
+      options: [
+        'No, it needs warmth too',
+        'Yes, two things are enough',
+        'Maybe tomorrow',
+        'Only in summer'
+      ],
+      correct: 'No, it needs warmth too',
+      growText: "That's right! Seeds need warmth too!"
+    },
+    {
+      id: 'h12', type: 'listen-word',
+      tts: "Once germination starts, the seed CANNOT go back to sleep! It must keep growing! True or false?",
+      options: [
+        'True!',
+        'False!',
+        'Maybe!',
+        'I don\'t know!'
+      ],
+      correct: 'True!',
+      growText: "That's right! It can't stop!"
+    }
+  ]
+};
+
+/* ============================================
+   STATE
+   ============================================ */
+let state = {
+  difficulty: 'easy',
+  questions: [],
+  index: 0,
+  stage: 0,
+  answered: false
+};
+
+/* ============================================
+   TTS — pre-generated audio (edge-tts AnaNeural)
+   ============================================ */
+const TTS = {
+  _audio: null,
+  dir: 'audio/',
+
+  play(filename, onEnd) {
+    this.stop();
+    const a = new Audio(this.dir + filename);
+    this._audio = a;
+    if (onEnd) a.onended = onEnd;
+    a.onerror = () => { if (onEnd) onEnd(); };
+    a.play().catch(() => { if (onEnd) onEnd(); });
+    return a;
+  },
+
+  stop() {
+    if (this._audio) { this._audio.pause(); this._audio.currentTime = 0; this._audio = null; }
+  }
+};
+
+/* ============================================
+   SOUND EFFECTS (Web Audio API)
+   ============================================ */
+const SFX = {
+  _c() {
+    if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this._ctx.state === 'suspended') this._ctx.resume();
+    return this._ctx;
+  },
+  correct() {
+    const c = this._c(), t = c.currentTime;
+    [523.25, 659.25, 783.99].forEach((f, i) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + i * 0.1);
+      g.gain.linearRampToValueAtTime(0.15, t + i * 0.1 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.4);
+      o.connect(g).connect(c.destination);
+      o.start(t + i * 0.1); o.stop(t + i * 0.1 + 0.45);
+    });
+  },
+  wrong() {
+    const c = this._c(), t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(350, t);
+    o.frequency.linearRampToValueAtTime(250, t + 0.3);
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + 0.4);
+  },
+  grow() {
+    const c = this._c(), t = c.currentTime;
+    [400, 500, 600, 800, 1000].forEach((f, i) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + i * 0.08);
+      g.gain.linearRampToValueAtTime(0.08, t + i * 0.08 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.25);
+      o.connect(g).connect(c.destination);
+      o.start(t + i * 0.08); o.stop(t + i * 0.08 + 0.3);
+    });
+  },
+  victory() {
+    const c = this._c(), t = c.currentTime;
+    [523, 587, 659, 784, 880, 1047].forEach((f, i) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + i * 0.12);
+      g.gain.linearRampToValueAtTime(0.12, t + i * 0.12 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.5);
+      o.connect(g).connect(c.destination);
+      o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.55);
+    });
+  }
+};
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+function showPage(id) {
+  TTS.stop();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goHome() {
+  TTS.stop();
+  resetGrowth();
+  showPage('welcome-page');
+}
+
+function selectDifficulty(level) {
+  state.difficulty = level;
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('selected', b.dataset.level === level));
+}
+
+/* ============================================
+   GAME LOGIC
+   ============================================ */
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  const pool = QUESTIONS[state.difficulty];
+  const shuffled = shuffle(pool);
+  const picked = [];
+  const types = [...new Set(shuffled.map(q => q.type))];
+
+  // Ensure variety: at least one of each type
+  types.forEach(type => {
+    const q = shuffled.find(q => q.type === type && !picked.includes(q));
+    if (q && picked.length < 6) picked.push(q);
+  });
+  while (picked.length < 6) {
+    const q = shuffled.find(q => !picked.includes(q));
+    if (q) picked.push(q); else break;
+  }
+
+  state.questions = shuffle(picked).slice(0, 6);
+  state.index = 0;
+  state.stage = 0;
+  state.answered = false;
+
+  resetGrowth();
+  showPage('quiz-page');
+  renderQuestion();
+}
+
+function resetGrowth() {
+  ['s1','s2','s3','s4','s5','s6'].forEach(id => document.getElementById(id).classList.remove('visible'));
+  document.querySelectorAll('.stage-dot').forEach(d => d.classList.remove('lit'));
+  document.getElementById('scene-sun').classList.remove('active');
+  document.getElementById('scene-rain').classList.remove('active');
+}
+
+function renderQuestion() {
+  const q = state.questions[state.index];
+  const c = document.getElementById('question-container');
+  state.answered = false;
+
+  document.getElementById('progress-label').textContent = `Question ${state.index + 1} / ${state.questions.length}`;
+  document.getElementById('progress-fill').style.width = `${(state.index / state.questions.length) * 100}%`;
+
+  let html = '<div class="question-card">';
+
+  if (q.type === 'image-choose' && q.image) {
+    html += `<div class="question-image"><img src="${IMG[q.image]}" alt="${q.image}"></div>`;
+  }
+
+  html += `<div style="text-align:center;">
+    <button class="speaker-btn" id="spk-btn" onclick="replay()">🔊 Listen</button>
+  </div></div>`;
+
+  if (q.type === 'listen-image') {
+    const cls = q.options.length === 4 ? 'image-options four-cols' : 'image-options';
+    html += `<div class="options-list ${cls}">`;
+    shuffle(q.options).forEach(opt => {
+      html += `<button class="option-btn image-option" data-qid="${opt.id}">
+        <div class="option-image"><img src="${IMG[opt.image]}" alt="${opt.id}"></div>
+        <div class="option-label-text">${opt.id}</div>
+      </button>`;
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="options-list">';
+    const labels = ['A', 'B', 'C', 'D'];
+    shuffle(q.options).forEach((opt, i) => {
+      html += `<button class="option-btn" data-qans="${opt}">
+        <span class="opt-label">${labels[i]}</span>
+        <span class="opt-text">${opt}</span>
+      </button>`;
+    });
+    html += '</div>';
+  }
+
+  requestAnimationFrame(() => {
+    document.querySelectorAll('#question-container .option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ans = btn.dataset.qid || btn.dataset.qans;
+        checkAnswer(ans);
+      });
+    });
+  });
+
+  html += '<div id="fb-container"></div>';
+  c.innerHTML = html;
+
+  setTimeout(() => {
+    const btn = document.getElementById('spk-btn');
+    if (btn) btn.classList.add('playing');
+    TTS.play(`q_${q.id}.mp3`, () => { if (btn) btn.classList.remove('playing'); });
+  }, 400);
+}
+
+function replay() {
+  const q = state.questions[state.index];
+  const btn = document.getElementById('spk-btn');
+  if (btn) btn.classList.add('playing');
+  TTS.play(`q_${q.id}.mp3`, () => { if (btn) btn.classList.remove('playing'); });
+}
+
+function checkAnswer(answer) {
+  if (state.answered) return;
+  state.answered = true;
+
+  const q = state.questions[state.index];
+  const ok = answer === q.correct;
+  const btns = document.querySelectorAll('.option-btn');
+
+  btns.forEach(btn => {
+    btn.classList.add('disabled');
+    const ba = btn.dataset.qid || btn.dataset.qans;
+    if (ba === q.correct) btn.classList.add('correct');
+    if ((btn.dataset.qid || btn.dataset.qans) === answer && !ok) btn.classList.add('wrong');
+  });
+
+  const fb = document.getElementById('fb-container');
+
+  if (ok) {
+    SFX.correct();
+    growNextStage();
+
+    fb.innerHTML = `
+      <div class="feedback correct-fb">
+        <span class="fb-icon">✅</span>
+        <span>Correct! ${q.growText}</span>
+      </div>
+      <div class="next-hint">Next question coming up...</div>`;
+
+    const a = TTS.play(`grow_${q.id}.mp3`);
+    if (a) {
+      a.onended = () => setTimeout(nextQuestion, 600);
+      a.onerror = () => setTimeout(nextQuestion, 1200);
+    } else {
+      setTimeout(nextQuestion, 2200);
+    }
+
+  } else {
+    SFX.wrong();
+    TTS.play('wrong_retry.mp3');
+
+    fb.innerHTML = `
+      <div class="feedback wrong-fb">
+        <span class="fb-icon">💪</span>
+        <span>Oops! Let's try again! You got this!</span>
+      </div>`;
+
+    setTimeout(() => {
+      btns.forEach(btn => {
+        const ba = btn.dataset.qid || btn.dataset.qans;
+        btn.classList.remove('disabled', 'wrong');
+        if (ba === q.correct) btn.classList.remove('correct');
+      });
+      state.answered = false;
+      fb.innerHTML = '';
+    }, 1800);
+  }
+}
+
+function nextQuestion() {
+  state.index++;
+  if (state.index >= state.questions.length) showResult();
+  else renderQuestion();
+}
+
+/* ============================================
+   GROWTH STAGES
+   ============================================ */
+function growNextStage() {
+  state.stage = Math.min(state.stage + 1, 6);
+  SFX.grow();
+
+  const dots = document.querySelectorAll('.stage-dot');
+  if (dots[state.stage - 1]) dots[state.stage - 1].classList.add('lit');
+
+  switch (state.stage) {
+    case 1: document.getElementById('s1').classList.add('visible'); break;
+    case 2:
+      document.getElementById('s2').classList.add('visible');
+      document.getElementById('scene-rain').classList.add('active');
+      break;
+    case 3: document.getElementById('s3').classList.add('visible'); break;
+    case 4: document.getElementById('s4').classList.add('visible'); break;
+    case 5: document.getElementById('s5').classList.add('visible'); break;
+    case 6:
+      document.getElementById('s6').classList.add('visible');
+      document.getElementById('scene-sun').classList.add('active');
+      celebrateSparkles();
+      break;
+  }
+
+  addSparkle();
+}
+
+function addSparkle() {
+  const scene = document.getElementById('growth-scene');
+  const emojis = ['✨', '💫', '🌿'];
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'sparkle';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = (25 + Math.random() * 50) + '%';
+      el.style.bottom = (25 + Math.random() * 50) + '%';
+      scene.appendChild(el);
+      setTimeout(() => el.remove(), 1500);
+    }, i * 150);
+  }
+}
+
+function celebrateSparkles() {
+  const scene = document.getElementById('growth-scene');
+  const emojis = ['✨', '⭐', '🌟', '🎉', '🌿', '🦋', '🌸', '💧'];
+  for (let i = 0; i < 14; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'sparkle';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = (8 + Math.random() * 84) + '%';
+      el.style.bottom = (8 + Math.random() * 75) + '%';
+      el.style.fontSize = (16 + Math.random() * 14) + 'px';
+      scene.appendChild(el);
+      setTimeout(() => el.remove(), 1500);
+    }, i * 80);
+  }
+}
+
+/* ============================================
+   RESULT
+   ============================================ */
+function showResult() {
+  const n = state.stage;
+  const emojis = ['🫘', '💧', '🫧', '🌱', '🌿', '🪴', '🌸'];
+  const emoji = emojis[Math.min(n, 6)];
+
+  let title, msg;
+  if (n === 6) {
+    title = 'Perfect! Full Plant!';
+    msg = 'Incredible! You grew a beautiful flowering plant from a tiny seed! You are a real Seed Scientist!';
+  } else if (n >= 4) {
+    title = 'Great Job!';
+    msg = `You grew ${n} stages! So close to a full plant — try again!`;
+  } else if (n >= 2) {
+    title = 'Good Try!';
+    msg = `You grew ${n} stages! Listen carefully and try again to grow more!`;
+  } else {
+    title = 'Keep Going!';
+    msg = `You grew ${n} stage${n !== 1 ? 's' : ''}. You can do it — try again!`;
+  }
+
+  document.getElementById('result-icon').textContent = emoji;
+  document.getElementById('result-score').textContent = `${n} / ${state.questions.length} stages grown`;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-msg').textContent = msg;
+
+  showPage('result-page');
+  document.getElementById('progress-fill').style.width = '100%';
+
+  if (n === 6) {
+    SFX.victory();
+    launchConfetti();
+    TTS.play('victory.mp3');
+  } else {
+    TTS.play(`partial_${Math.min(n, 5)}.mp3`);
+  }
+}
+
+function launchConfetti() {
+  const emojis = ['🌸', '⭐', '🍃', '🌱', '✨', '🦋', '🌿', '🌺', '💧', '🫘'];
+  for (let i = 0; i < 35; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.top = '-30px';
+      el.style.animationDuration = (2.5 + Math.random() * 2) + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4500);
+    }, i * 70);
+  }
+}
+</script>
+</body>
+</html>
