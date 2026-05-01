@@ -2045,6 +2045,7 @@ function renderQuestion() {
     html += `<div class="question-image"><img src="${IMG[q.image]}" alt="${q.image}"></div>`;
   }
 
+  html += `<div class="question-text">${q.tts}</div>`;
   html += `<div style="text-align:center;">
     <button class="speaker-btn" id="spk-btn" onclick="replay()">🔊 Listen</button>
   </div></div>`;
