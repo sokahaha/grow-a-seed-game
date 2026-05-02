@@ -1588,18 +1588,18 @@ applyTheme(THEME_CONFIG);
    IMAGE MAP (reuse W2 vocab card images)
    ============================================ */
 const IMG = {
-  sprout: 'vocab_images/SPROUT.png',
-  'seed coat': 'vocab_images/seed coat.png',
-  embryo: 'vocab_images/embryo.png',
-  cotyledon: 'vocab_images/COTYLEDON.png',
-  dormancy: 'vocab_images/dormancy.png',
-  seedling: 'vocab_images/SEEDLING.png',
-  shoot: 'vocab_images/shoot.png',
-  germination: 'vocab_images/germination.png',
-  photosynthesis: 'vocab_images/photosynthesis.png',
-  swell: 'vocab_images/swell.png',
-  oxygen: 'vocab_images/OXYGEN.png',
-  'solar-powered': 'vocab_images/solar-powered.png'
+  sprout: 'vocab_images/sprout.webp',
+  'seed coat': 'vocab_images/seed coat.webp',
+  embryo: 'vocab_images/embryo.webp',
+  cotyledon: 'vocab_images/cotyledon.webp',
+  dormancy: 'vocab_images/dormancy.webp',
+  seedling: 'vocab_images/seedling.webp',
+  shoot: 'vocab_images/shoot.webp',
+  germination: 'vocab_images/germination.webp',
+  photosynthesis: 'vocab_images/photosynthesis.webp',
+  swell: 'vocab_images/swell.webp',
+  oxygen: 'vocab_images/oxygen.webp',
+  'solar-powered': 'vocab_images/solar-powered.webp'
 };
 
 /* ============================================
@@ -2042,7 +2042,7 @@ function renderQuestion() {
   let html = '<div class="question-card">';
 
   if (q.type === 'image-choose' && q.image) {
-    html += `<div class="question-image"><img src="${IMG[q.image]}" alt="${q.image}"></div>`;
+    html += `<div class="question-image"><img src="${IMG[q.image]}" alt="${q.image}" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:2rem>🌱</span>'"></div>`;
   }
 
   html += `<div class="question-text">${q.tts}</div>`;
@@ -2055,7 +2055,7 @@ function renderQuestion() {
     html += `<div class="options-list ${cls}">`;
     shuffle(q.options).forEach(opt => {
       html += `<button class="option-btn image-option" data-qid="${opt.id}">
-        <div class="option-image"><img src="${IMG[opt.image]}" alt="${opt.id}"></div>
+        <div class="option-image"><img src="${IMG[opt.image]}" alt="${opt.id}" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:1.5rem>🌱</span>'"></div>
         <div class="option-label-text">${opt.id}</div>
       </button>`;
     });
