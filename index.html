@@ -1587,20 +1587,19 @@ applyTheme(THEME_CONFIG);
 /* ============================================
    IMAGE MAP (reuse W2 vocab card images)
    ============================================ */
-const _IV = '?v=2';  // cache-bust for images
 const IMG = {
-  sprout: 'vocab_images/sprout.webp' + _IV,
-  'seed coat': 'vocab_images/seed coat.webp' + _IV,
-  embryo: 'vocab_images/embryo.webp' + _IV,
-  cotyledon: 'vocab_images/cotyledon.webp' + _IV,
-  dormancy: 'vocab_images/dormancy.webp' + _IV,
-  seedling: 'vocab_images/seedling.webp' + _IV,
-  shoot: 'vocab_images/shoot.webp' + _IV,
-  germination: 'vocab_images/germination.webp' + _IV,
-  photosynthesis: 'vocab_images/photosynthesis.webp' + _IV,
-  swell: 'vocab_images/swell.webp' + _IV,
-  oxygen: 'vocab_images/oxygen.webp' + _IV,
-  'solar-powered': 'vocab_images/solar-powered.webp' + _IV
+  sprout: 'vocab_images/sprout.webp',
+  'seed coat': 'vocab_images/seed coat.webp',
+  embryo: 'vocab_images/embryo.webp',
+  cotyledon: 'vocab_images/cotyledon.webp',
+  dormancy: 'vocab_images/dormancy.webp',
+  seedling: 'vocab_images/seedling.webp',
+  shoot: 'vocab_images/shoot.webp',
+  germination: 'vocab_images/germination.webp',
+  photosynthesis: 'vocab_images/photosynthesis.webp',
+  swell: 'vocab_images/swell.webp',
+  oxygen: 'vocab_images/oxygen.webp',
+  'solar-powered': 'vocab_images/solar-powered.webp'
 };
 
 /* ============================================
@@ -1894,11 +1893,10 @@ let state = {
 const TTS = {
   _audio: null,
   dir: 'audio/',
-  _v: '?v=2',  // cache-bust version
 
   play(filename, onEnd) {
     this.stop();
-    const a = new Audio(this.dir + filename + this._v);
+    const a = new Audio(this.dir + filename);
     this._audio = a;
     if (onEnd) a.onended = onEnd;
     a.onerror = () => { if (onEnd) onEnd(); };
